@@ -251,14 +251,15 @@ ENRCOMM * File2TabCom(char * fichier, int * nbCommandesLues) {
 
 }
 
-void AfficheTabENRCOMM(ENRCOMM * TabCom) {
-    for(int i = 0; i < sizeof(TabCom); i++) {
-        printf("PID : %d", TabCom[i].pid);
-        printf("Status : %d", TabCom[i].statut);
-        printf("Retour : %d", TabCom[i].retour);
-        printf("Début : %ld", TabCom[i].debut);
-        printf("Fin : %ld", TabCom[i].fin);
+void AfficheTabENRCOMM(ENRCOMM * TabCom, int nbCommandesLues) {
+    for(int i = 0; i < nbCommandesLues; i++) {
         AfficheArgv(TabCom[i].argv);
+        printf("PID : %d / ", TabCom[i].pid);
+        printf("Status : %d / ", TabCom[i].statut);
+        printf("Retour : %d / ", TabCom[i].retour);
+        printf("Début : %ld / ", TabCom[i].debut);
+        printf("Fin : %ld", TabCom[i].fin);
+        printf("\n\n");
     }
 }
 
@@ -300,22 +301,22 @@ void ExecFileENRCOMM(char * fichier) {
 
     time_t debut_execution; time(&debut_execution);
     for(int i = 0; i < nbCommandesLues; i++) {  
-
         ENRCOMM e;
 
         e.argv = TabCom[i].argv;
-
         e = ExecuteENRCOMM(e.argv, e); // toutes les autres valeurs de e sont initialisés directement dans la fonction car on fournit l'objet e
 
         TabCom[i] = e;
     }
     time_t fin_execution; time(&fin_execution);
 
-    printf("FIN\n");  // toutes les commandes sont exécutées
+    printf("FIN\n\n");  // toutes les commandes sont exécutées
 
-    AfficheTabENRCOMM(TabCom);  // affiche un rapport d'exécution de toutes les commandes exécutées
-    // ainsi que le temps total
+    // le temps total d'exécution de toutes les commandes du fichier
     time_t duree_execution = fin_execution - debut_execution;   
-    printf("%ld", duree_execution);
+    printf("Temps d'exécution de toutes les commandes du fichier : %ld secondes.", duree_execution);
+    printf("\n\n");
+
+    AfficheTabENRCOMM(TabCom, nbCommandesLues);  // affiche un rapport d'exécution de toutes les commandes exécutées
 
 }

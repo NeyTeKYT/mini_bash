@@ -36,7 +36,7 @@ void exercice10(char * fichier) {
     int nbCommandesLues;
     TabCom = File2TabCom(fichier, &nbCommandesLues);
     printf("%d\n", nbCommandesLues);
-    AfficheTabENRCOMM(TabCom);
+    AfficheTabENRCOMM(TabCom, nbCommandesLues);
 }
 
 void exercice11(char * fichier) {
