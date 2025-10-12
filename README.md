@@ -25,5 +25,5 @@ Pour le quitter, utilisez le raccourci `CTRL + D` qui stoppe le programme.
 3. `gcc -c *.c`
 4. `gcc -o prog *.o`, vous pouvez remplacer `prog` par n'importe quel autre nom, c'est le nom qui sera donné à l'exécutable.
 5. `./prog`
-6.
-7. ![gif_utilisation_mini_bash](https://github.com/user-attachments/assets/f2bf1a8d-c0df-4050-b8f2-e9cab86e2f0a)
+
+![gif_utilisation_mini_bash](https://github.com/user-attachments/assets/f2bf1a8d-c0df-4050-b8f2-e9cab86e2f0a)
