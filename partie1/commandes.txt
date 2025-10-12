@@ -1,8 +1,0 @@
-ls 
-ls -l
-echo test
-date
-pwd
-who
-ifconfig
-cat commandes.txt
