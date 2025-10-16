@@ -33,7 +33,7 @@ void AfficheArgv(char ** array) {
         //printf("Arg ", i, " : ", array[i], "\n"); 
         printf(array[i], "\n"); // il manque un espace entre chaque tour de boucle
     }
-    printf("\n");
+    //printf("\n");
 }
 
 // exercice 3
@@ -238,6 +238,8 @@ ENRCOMM * File2TabCom(char * fichier, int * nbCommandesLues) {
         char ** Argv = Ligne2ARGV(line);
         e.argv = Argv;
         e.statut = -1;  // on ne demande pas d'exécuter la commande donc -1
+        e.pid = e.retour = -1;
+        e.debut = e.fin = 0;
 
         TabCom[i] = e;  // ajouter au tableau une fois correctement initialisé
 
@@ -251,33 +253,41 @@ ENRCOMM * File2TabCom(char * fichier, int * nbCommandesLues) {
 
 }
 
+void AfficheENRCOMM(ENRCOMM e) {
+    AfficheArgv(e.argv);
+    if(e.pid == -1) {
+        printf(" : Status : %d", e.statut);
+    }
+    else {
+        printf(" : PID : %d / ", e.pid);
+        printf("Status : %d / ", e.statut);
+    }
+    if(e.retour != -1) printf("Retour : %d / ", e.retour);
+    if(e.debut > 0) printf("Début : %ld / ", e.debut);
+    if(e.fin > 0) printf("Fin : %ld", e.fin);
+    //printf("\n\n");
+}
+
 void AfficheTabENRCOMM(ENRCOMM * TabCom, int nbCommandesLues) {
     for(int i = 0; i < nbCommandesLues; i++) {
-        AfficheArgv(TabCom[i].argv);
-        printf("PID : %d / ", TabCom[i].pid);
-        printf("Status : %d / ", TabCom[i].statut);
-        printf("Retour : %d / ", TabCom[i].retour);
-        printf("Début : %ld / ", TabCom[i].debut);
-        printf("Fin : %ld", TabCom[i].fin);
-        printf("\n\n");
+        AfficheENRCOMM(TabCom[i]);
     }
 }
 
 ENRCOMM ExecuteENRCOMM(char ** commande, ENRCOMM e) {
     int pid, res, ret;
+    time_t debut_execution_commande; time(&debut_execution_commande); e.debut = debut_execution_commande;
     pid = fork();
 
     // fils
     if(pid == 0) {
         e.pid = 0;
-        time_t debut_execution_commande; time(&debut_execution_commande); e.debut = debut_execution_commande;
-        execvp(commande[0], commande);  // si ce code réussit, "exit(254)" n'est jamais exécuté, car le processue est remplacé
+        execvp(commande[0], commande);    // si ce code réussit, "exit(254)" n'est jamais exécuté, car le processue est remplacé
         exit(254);  // est exécuté si execvp() échoue pour signaler une erreur d'exécution
     }
 
     // père
     else if(pid > 0) {
-        time_t fin_execution_commande; time(&fin_execution_commande); e.fin = fin_execution_commande;
         e.pid = pid;    // le PID du fils est retourné au père
         e.statut = 1;   // en cours d'exécution
         res = wait(&ret);
@@ -295,7 +305,6 @@ ENRCOMM ExecuteENRCOMM(char ** commande, ENRCOMM e) {
 
 // exercice 11
 void ExecFileENRCOMM(char * fichier) {
-
     int nbCommandesLues = 0;
     ENRCOMM * TabCom = File2TabCom(fichier, &nbCommandesLues);  // tableau contenant toutes les commandes 
 
@@ -304,9 +313,76 @@ void ExecFileENRCOMM(char * fichier) {
         ENRCOMM e;
 
         e.argv = TabCom[i].argv;
-        e = ExecuteENRCOMM(e.argv, e); // toutes les autres valeurs de e sont initialisés directement dans la fonction car on fournit l'objet e
+        e = ExecuteENRCOMM(e.argv, e); // toutes les autres valeurs (sauf fin) de e sont initialisés directement dans la fonction car on fournit l'objet e
+        time_t fin_execution_commande; time(&fin_execution_commande);
+        e.fin = fin_execution_commande;
 
         TabCom[i] = e;
+    }
+    time_t fin_execution; time(&fin_execution);
+
+    printf("FIN\n\n");  // toutes les commandes sont exécutées
+
+    // le temps total d'exécution de toutes les commandes du fichier
+    time_t duree_execution = fin_execution - debut_execution;   
+    printf("Temps d'exécution de toutes les commandes du fichier : %ld secondes.\n", duree_execution);
+
+    AfficheTabENRCOMM(TabCom, nbCommandesLues);  // affiche un rapport d'exécution de toutes les commandes exécutées
+}
+
+int ExecuteENRCOMMBatch(char ** commande, ENRCOMM * e) {
+    int pid, res, ret;
+    time_t debut_execution_commande; time(&debut_execution_commande); e->debut = debut_execution_commande;
+    pid = fork();
+
+    // fils
+    if(pid == 0) { 
+        e->pid = 0;
+        if(execvp(commande[0], commande)) return WEXITSTATUS(res); 
+        else exit(254); // l'exec n'a pas marché (command not found)
+    }
+
+    // père
+    else if(pid > 0) { 
+        time_t fin_execution_commande; time(&fin_execution_commande); e->fin = fin_execution_commande;
+        e->pid = pid;    // le PID du fils est retourné au père
+        e->statut = 1;   // en cours d'exécution
+        e->statut = 0;
+        e->retour = WEXITSTATUS(ret);
+        return WEXITSTATUS(ret);
+    }
+
+    else {
+        e->pid = -1;
+        exit(255); // problème dans le fork (pb système)
+    }
+
+} 
+
+// exercice 12
+void ExecFileBatchENRCOMM(char * fichier) {
+    int nbCommandesLues = 0;
+    ENRCOMM * TabCom = File2TabCom(fichier, &nbCommandesLues);  // tableau contenant toutes les commandes
+
+    time_t debut_execution; time(&debut_execution);
+    for(int i = 0; i < nbCommandesLues; i++) { 
+        ENRCOMM e;
+
+        e.argv = TabCom[i].argv;
+        int code_retour = ExecuteENRCOMMBatch(e.argv, &e);  // toutes les autres valeurs de e sont initialisés directement dans la fonction car on fournit l'objet e
+
+        TabCom[i] = e;
+    }
+
+    for(int i = 0; i < nbCommandesLues; i++) {
+        int pid = wait(NULL);
+        for(int j = 0; j < nbCommandesLues; j++) {
+            if(TabCom[j].pid == pid) {
+                time_t fin_execution_commande; time(&fin_execution_commande);
+                TabCom[j].fin = fin_execution_commande;
+                AfficheENRCOMM(TabCom[j]);
+            }
+        }
     }
     time_t fin_execution; time(&fin_execution);
 
@@ -318,5 +394,57 @@ void ExecFileENRCOMM(char * fichier) {
     printf("\n\n");
 
     AfficheTabENRCOMM(TabCom, nbCommandesLues);  // affiche un rapport d'exécution de toutes les commandes exécutées
+}
 
+// exercice 13 
+void ExecFileBatchLimite(char * fichier, int N) {
+    int nbCommandesLues = 0;
+    ENRCOMM * TabCom = File2TabCom(fichier, &nbCommandesLues);  // tableau contenant toutes les commandes
+
+    printf("Nombre de processus maximum à exécuter en même temps : %d\n", N);
+    int nb_executing_process = 0;
+
+    time_t debut_execution; time(&debut_execution);
+    for(int i = 0; i < nbCommandesLues; i++) { 
+        ENRCOMM e;
+
+        e.argv = TabCom[i].argv;
+        if(nb_executing_process == N) {
+            int pid = wait(NULL);
+            for(int j = 0; j < nbCommandesLues; j++) {
+                if(TabCom[j].pid == pid) {
+                    time_t fin_execution_commande; time(&fin_execution_commande);
+                    TabCom[j].fin = fin_execution_commande;
+                    AfficheENRCOMM(TabCom[j]);
+                }
+            }
+            nb_executing_process--;
+        }
+        int code_retour = ExecuteENRCOMMBatch(e.argv, &e);  // toutes les autres valeurs de e sont initialisés directement dans la fonction car on fournit l'objet e
+        nb_executing_process++;
+        AfficheArgv(e.argv); printf(" a été lancé à %ld.", e.debut); 
+
+        TabCom[i] = e;
+    }
+
+    for(int i = 0; i < nbCommandesLues; i++) {
+        int pid = wait(NULL);
+        for(int j = 0; j < nbCommandesLues; j++) {
+            if(TabCom[j].pid == pid) {
+                time_t fin_execution_commande; time(&fin_execution_commande);
+                TabCom[j].fin = fin_execution_commande;
+                AfficheENRCOMM(TabCom[j]);
+            }
+        }
+    }
+    time_t fin_execution; time(&fin_execution);
+
+    printf("\n\nFIN\n\n");  // toutes les commandes sont exécutées
+
+    // le temps total d'exécution de toutes les commandes du fichier
+    time_t duree_execution = fin_execution - debut_execution;   
+    printf("Temps d'exécution de toutes les commandes du fichier : %ld secondes.", duree_execution);
+    printf("\n\n");
+
+    AfficheTabENRCOMM(TabCom, nbCommandesLues);  // affiche un rapport d'exécution de toutes les commandes exécutées
 }
