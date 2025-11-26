@@ -7,15 +7,15 @@
 #include <sys/wait.h>
 #include <time.h>
 
-// exercice 1
-char **Ligne2ARGV(char*ligne) {
-    char **arg;
-    char *li;
+// Transforme une chaîne de caractères contenant une commande en un tableau d'arguments de type argv
+char ** Ligne2ARGV(char * ligne) {
+    char ** arg;
+    char * li;
     int i;
-    char *p;
-    li = strdup(ligne); // strtok peut modifier la ligne, on le met dans li, strdup alloue et copie
-    arg = (char **)malloc(MAX_ARG * sizeof(char *));
-    p = strtok(li," \t\n");
+    char * p;
+    li = strdup(ligne); // "strdup" duplique la ligne et la stocke dans "li"
+    arg = (char **)malloc(MAX_ARG * sizeof(char *));    // allocation de MAX_ARG pointeurs
+    p = strtok(li, " \t\n");
     i = 0;
     while(p) {
         arg[i] = strdup(p);
@@ -26,22 +26,32 @@ char **Ligne2ARGV(char*ligne) {
     return arg;
 }
 
-// exercice 2
-void AfficheArgv(char ** array) {
-    printf("\n");
-    for(int i = 0; i < sizeof(array); i++) {
-        //printf("Arg ", i, " : ", array[i], "\n"); 
-        printf(array[i], "\n"); // il manque un espace entre chaque tour de boucle
+// Affiche un tableau de type ARGV
+void AfficheArgv(char ** argv) {
+    int i = 0;
+    while(argv[i] != NULL) {
+        printf("%s", argv[i]);
+        if(argv[i+1] != NULL) printf(" ");
+        i++;
     }
-    //printf("\n");
+    printf("\n");
 }
 
-// exercice 3
-char *Argv2Ligne(char ** commande) {
-    int total_length = 0;
+void AfficheArgvWithoutSpace(char ** argv) {
+    int i = 0;
+    while(argv[i] != NULL) {
+        printf("%s", argv[i]);
+        if(argv[i+1] != NULL) printf(" ");
+        i++;
+    }
+}
+
+// Transforme un tableau de type ARGV en chaîne de caractères
+char * Argv2Ligne(char ** commande) {
+    int total_length = 0;   // contient le nombre de caractères de la commande
     int i = 0;
     
-    // calculate total length
+    // Calcule la taille de la commande
     while(commande[i] != NULL) {
         total_length += strlen(commande[i]) + 1; // +1 for adding a space
         i++;
@@ -52,7 +62,7 @@ char *Argv2Ligne(char ** commande) {
 
     i = 0;
     while(commande[i] != NULL) {
-        strcat(c, commande[i]);
+        strcat(c, commande[i]); // concatène commande[i] dans c
         strcat(c, "\0"); // adding a space
         i++;
     }
@@ -60,7 +70,10 @@ char *Argv2Ligne(char ** commande) {
     return c;
 }
 
-// exercice 4
+// Reçoit un argument de type ARGV, l'exécute, attend qu'il se termine et retourne : 
+// - sa valeur de retour (EXITSTATUS) ou bien,
+// - 255 si le fork n'a pas marché (pb système)
+// - 254 si l'exec n'a pas marché (command not found)
 int Execute(char ** commande) {
     int pid, res, ret;
     pid = fork();
@@ -75,28 +88,28 @@ int Execute(char ** commande) {
     else exit(255); // problème dans le fork (pb système)
 }
 
-// exercice 5
+// Création d'un programme interpréteur de commandes
 void MiniBash() {
 
-    char commande[100]; // getchar() returns EOF (commonly -1) when Ctrl + D is pressed.
+    char commande[MAX_ARG]; // getchar() returns EOF (commonly -1) when Ctrl + D is pressed.
 
     printf("Entrer Commande >");    // affiche un prompt
 
-    char ** arg;
+    char ** argv;
 
     while(fgets(commande, sizeof(commande), stdin) != NULL) { // tant que l'utilisateur n'a pas appuyé sur Ctrl + D
 
         // création de argv puis l'exécute
-        arg = Ligne2ARGV(commande); 
-        Execute(arg);
+        argv = Ligne2ARGV(commande); 
+        Execute(argv);
 
         // libération de la mémoire
         int i = 0;
-        while(arg[i] != NULL) {
-            free(arg[i]);
+        while(argv[i] != NULL) {
+            free(argv[i]);
             i++;
         }
-        free(arg);
+        free(argv);
 
         printf("Entrer Commande >");    // affiche un prompt
         
@@ -106,11 +119,11 @@ void MiniBash() {
 
 }
 
-// exercice 6
+// Lit des commandes dans un fichier, les transforme en Argv et les range toutes dans un tableau qu'il retourne.
+// Il retourne en plus dans le 2ème argument le nombre de commandes lues.
 char *** File2TabArgv(char * fichier, int * nbCommandesLues) {
 
     FILE * file = fopen(fichier, "r");  // ouverture du fichier en lecture seule (r)
-
     if(file == NULL) return NULL;   // check if the file was opened successfully.
     
     int nbLinesInFile = 0;
@@ -126,7 +139,7 @@ char *** File2TabArgv(char * fichier, int * nbCommandesLues) {
 
     char *** TabArgv = malloc(nbLinesInFile * sizeof(char **));
 
-    char line[100];
+    char line[MAX_ARG];
     int i = 0;
     *nbCommandesLues = 0;
 
@@ -142,7 +155,15 @@ char *** File2TabArgv(char * fichier, int * nbCommandesLues) {
 
 }
 
-// exercice 7
+// Affiche un TabArgv
+void AfficheTabArgv(char *** TabArgv) {
+    for(int i = 0; i < sizeof(TabArgv); i++) {
+        AfficheArgv(TabArgv[i]);
+    }
+}
+
+// Prend en argument un nom de fichier contenant des commandes, les stocke dans un tableau (File2TabArgv),
+// puis les exécute une à une et affiche "FIN" une fois que toutes les commandes sont exécutées
 void ExecFile(char * fichier) {
 
     int nbCommandesLues = 0;
@@ -150,15 +171,15 @@ void ExecFile(char * fichier) {
 
     for(int i = 0; i < nbCommandesLues; i++) {  // ex : le fichier a 8 lignes, donc il devrait prendre au moins 40s pour exécuter toutes les commandes
         AfficheArgv(TabArgv[i]);
-        int resultCommand = Execute(TabArgv[i]);
-        sleep(5);   // attend 5 secondes avant d'exécuter la prochaine commande
+        int retour = Execute(TabArgv[i]);
+        //sleep(5);   // attend 5 secondes avant d'exécuter la prochaine commande
     }
 
     printf("FIN");  // toutes les commandes sont exécutées
 
 }
 
-// exercice 8
+// Reçoit un argument de type ARGV, l'exécute, mais n'attend pas qu'il se termine.
 int ExecuteBatch(char ** commande) {
 
     int pid, res, ret;
@@ -174,9 +195,10 @@ int ExecuteBatch(char ** commande) {
 
 } 
 
-// exercice 9
-// avec le fichier "wait.txt", le temps d'exécution doit être de 20 secondes (sleep 20 est le max) 
-// != ExecFile("wait.txt") où ça serait sleep 1 + 1 + 10 + 20 = 32 secondes
+// Prend en argument un nom de fichier contenant des commandes, les stocke dans un tableau (File2TabArgv),
+// les exécute TOUTES EN MÊME TEMPS et affiche FIN une fois que toutes les commandes sont exécutées.
+// ./exec_file wait.txt : attend 32 secondes
+// ./exec_file_batch wait.text : attend 20 secondes
 void ExecFileBatch(char * fichier) {
 
     int nbCommandesLues = 0;
@@ -191,27 +213,27 @@ void ExecFileBatch(char * fichier) {
         wait(NULL); // attend qu'un fils (crée avec ExecuteBatch, n'importe lequel) se termine, dans l'ordre ça donne sleep 1, sleep 1, sleep 10, sleep 20
     }
 
-    printf("\nFIN\n");  // toutes les commandes sont exécutées
+    printf("FIN\n");  // toutes les commandes sont exécutées
 
 }
 
+// Structure pour chaque commande
 typedef struct ENRCOMM {
-    int pid;
-    int statut;
-    int retour;
-    time_t debut;
-    time_t fin;
-    char ** argv;
+    int pid;    // numéro de processus dans lequel s'exécute la commande
+    int statut; // -1 = pas encore exécuté / 0 = terminé / 1 = en exécution
+    int retour; // EXITSTATUS (comme dans Execute)
+    time_t debut;   // l'epoch à laquelle la commande a été lancée
+    time_t fin; // l'epoch à laquelle la commande s'est terminée
+    char ** argv;   // Tableau Argv de la commande
 } ENRCOMM;
 
 // on déclarera une variable comme ceci : ENRCOMM TabCom;
 // et ENRCOMM * TabCom; pour un tableau.
 
-// exercice 10
+// Remplira un tableau ENRCOMM à partir des lignes du fichier passé en paramètres
 ENRCOMM * File2TabCom(char * fichier, int * nbCommandesLues) {
 
     FILE * file = fopen(fichier, "r");  // ouverture du fichier en lecture seule (r)
-
     if(file == NULL) return NULL;   // check if the file was opened successfully.
     
     int nbLinesInFile = 0;
@@ -227,7 +249,7 @@ ENRCOMM * File2TabCom(char * fichier, int * nbCommandesLues) {
 
     ENRCOMM * TabCom = malloc(nbLinesInFile * sizeof(ENRCOMM));
 
-    char line[100];
+    char line[MAX_ARG];
     int i = 0;
     *nbCommandesLues = 0;
 
@@ -235,8 +257,8 @@ ENRCOMM * File2TabCom(char * fichier, int * nbCommandesLues) {
         
         ENRCOMM e;
 
-        char ** Argv = Ligne2ARGV(line);
-        e.argv = Argv;
+        char ** argv = Ligne2ARGV(line);
+        e.argv = argv;
         e.statut = -1;  // on ne demande pas d'exécuter la commande donc -1
         e.pid = e.retour = -1;
         e.debut = e.fin = 0;
@@ -256,15 +278,15 @@ ENRCOMM * File2TabCom(char * fichier, int * nbCommandesLues) {
 void AfficheENRCOMM(ENRCOMM e) {
     AfficheArgv(e.argv);
     if(e.pid == -1) {
-        printf(" : Status : %d", e.statut);
+        printf("Status : %d\n\n", e.statut);
     }
     else {
-        printf(" : PID : %d / ", e.pid);
-        printf("Status : %d / ", e.statut);
+        printf("PID : %d\n", e.pid);
+        printf("Status : %d\n", e.statut);
     }
-    if(e.retour != -1) printf("Retour : %d / ", e.retour);
-    if(e.debut > 0) printf("Début : %ld / ", e.debut);
-    if(e.fin > 0) printf("Fin : %ld", e.fin);
+    if(e.retour != -1) printf("Retour : %d\n", e.retour);
+    if(e.debut > 0) printf("Début : %ld\n", e.debut);
+    if(e.fin > 0) printf("Fin : %ld\n\n", e.fin);
     //printf("\n\n");
 }
 
@@ -303,7 +325,7 @@ ENRCOMM ExecuteENRCOMM(char ** commande, ENRCOMM e) {
     return e;
 }
 
-// exercice 11
+// Affiche un rapport d'exécution de toutes les commandes exécutées, ainsi que le temps total.
 void ExecFileENRCOMM(char * fichier) {
     int nbCommandesLues = 0;
     ENRCOMM * TabCom = File2TabCom(fichier, &nbCommandesLues);  // tableau contenant toutes les commandes 
@@ -313,7 +335,7 @@ void ExecFileENRCOMM(char * fichier) {
         ENRCOMM e;
 
         e.argv = TabCom[i].argv;
-        e = ExecuteENRCOMM(e.argv, e); // toutes les autres valeurs (sauf fin) de e sont initialisés directement dans la fonction car on fournit l'objet e
+        e = ExecuteENRCOMM(e.argv, e); // toutes les autres valeurs (sauf fin) de e sont initialisées directement dans la fonction car on fournit l'objet e
         time_t fin_execution_commande; time(&fin_execution_commande);
         e.fin = fin_execution_commande;
 
@@ -359,7 +381,8 @@ int ExecuteENRCOMMBatch(char ** commande, ENRCOMM * e) {
 
 } 
 
-// exercice 12
+// Affiche un rapport d'exécution DÈS QU'UNE COMMANDE VIENT DE SE TERMINER
+// Puis à la fin de toutes les commandes, affiche "FIN" et un rapport complet sur toutes les commandes, ainsi que le temps total
 void ExecFileBatchENRCOMM(char * fichier) {
     int nbCommandesLues = 0;
     ENRCOMM * TabCom = File2TabCom(fichier, &nbCommandesLues);  // tableau contenant toutes les commandes
@@ -396,12 +419,13 @@ void ExecFileBatchENRCOMM(char * fichier) {
     AfficheTabENRCOMM(TabCom, nbCommandesLues);  // affiche un rapport d'exécution de toutes les commandes exécutées
 }
 
-// exercice 13 
+// Une version amméliorée de ExecFileBatchLimite mais qui peut exécuter N processus (commandes) en même temps.
+// -> Pour éviter qu'un nombre trop important de commandes soient exécutés par la machine en même temps.
 void ExecFileBatchLimite(char * fichier, int N) {
     int nbCommandesLues = 0;
     ENRCOMM * TabCom = File2TabCom(fichier, &nbCommandesLues);  // tableau contenant toutes les commandes
 
-    printf("Nombre de processus maximum à exécuter en même temps : %d\n", N);
+    printf("Nombre de processus maximum à exécuter en même temps : %d\n\n", N);
     int nb_executing_process = 0;
 
     time_t debut_execution; time(&debut_execution);
@@ -422,7 +446,7 @@ void ExecFileBatchLimite(char * fichier, int N) {
         }
         int code_retour = ExecuteENRCOMMBatch(e.argv, &e);  // toutes les autres valeurs de e sont initialisés directement dans la fonction car on fournit l'objet e
         nb_executing_process++;
-        AfficheArgv(e.argv); printf(" a été lancé à %ld.", e.debut); 
+        printf("- Lancement de "); AfficheArgvWithoutSpace(e.argv); printf(" à %ld.\n\n", e.debut); 
 
         TabCom[i] = e;
     }

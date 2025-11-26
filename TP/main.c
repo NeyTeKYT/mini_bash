@@ -1,83 +1,55 @@
 #include "fonctions.h"
 #include <stdio.h>
-
-void exercice1() {
-    char ** commande = Ligne2ARGV("ls -l");
-}
-
-void exercice2() {
-    char ** commande = Ligne2ARGV("ls -l");
-    AfficheArgv(commande);
-}
-
-void exercice3() {
-    char ** commande = Ligne2ARGV("ls -l");
-    char * ligne = Argv2Ligne(commande);
-}
-
-void exercice4() {
-    char ** commande = Ligne2ARGV("sleep 10");
-    int retour = Execute(commande);
-}
-
-void exercice6() {
-    int nbCommandesLues;
-    char *** TabArgv = File2TabArgv("commandes.txt", &nbCommandesLues);
-    printf("%d\n", nbCommandesLues);
-}
-
-void exercice8() {
-    char ** commande = Ligne2ARGV("sleep 10");
-    int retour = ExecuteBatch(commande);
-}
-
-void exercice10(char * fichier) {
-    ENRCOMM * TabCom;
-    int nbCommandesLues;
-    TabCom = File2TabCom(fichier, &nbCommandesLues);
-    printf("Nombre de commandes lues : %d.\n", nbCommandesLues);
-    AfficheTabENRCOMM(TabCom, nbCommandesLues);
-}
-
-void exercice11() {
-    ExecFileENRCOMM("wait.txt");    // attend 32 secondes
-}
-
-void exercice12() {
-    ExecFileBatchENRCOMM("wait.txt");   // attend 20 secondes
-}
-
-void exercice13() {
-    ExecFileBatchLimite("wait.txt", 2); // maximum 2 processus en même temps
-}
+#include <stdlib.h>
 
 int main(int argc, char * argv[]) {
 
-    //exercice1();
+    // ./ligne_to_argv "ls -l"
+    //char ** commande = Ligne2ARGV(argv[1]);
+    //AfficheArgv(commande);
 
-    //exercice2();
+    // ./argv_to_ligne "ls -l"
+    //char * ligne = Argv2Ligne(commande);
+    //printf("%s\n", ligne);
 
-    //exercice3();
+    // ./execute "ls -l"
+    //int retour = Execute(commande);
+    //printf("%d\n", retour);
 
-    //exercice4();    // attend 10 secondes
+    // ./mini_bash
+    //MiniBash();
 
-    //MiniBash(); // exercie 5
+    // ./file_to_tab_argv commandes.txt
+    //char *** TabArgv;
+    //int nbCommandesLues;
+    //TabArgv = File2TabArgv(argv[1], &nbCommandesLues);
+    //AfficheTabArgv(TabArgv);
+    //printf("%d\n", nbCommandesLues);
 
-    //exercice6();
+    // ./exec_file commandes.txt
+    //ExecFile(argv[1]);
 
-    //ExecFile("commandes.txt");  // exercice 7
+    // ./execute_batch "sleep 10"
+    //char ** commande = Ligne2ARGV(argv[1]);
+    //ExecuteBatch(commande);
 
-    //exercice8();    // n'attend pas 10 secondes
+    // ./exec_file_batch wait.txt
+    //ExecFileBatch(argv[1]);
 
-    //ExecFileBatch("wait.txt");
+    // ./file_to_tab_com commandes.txt
+    //ENRCOMM * TabCom;
+    //int nbCommandesLues;
+    //TabCom = File2TabCom(argv[1], &nbCommandesLues);
+    //AfficheTabENRCOMM(TabCom, nbCommandesLues);
 
-    //exercice10(argv[1]);
+    // ./exec_file_enrcomm commandes.txt
+    //ExecFileENRCOMM(argv[1]);
 
-    exercice11();
+    // ./exec_file_enrcomm_batch commandes.txt
+    //ExecFileBatchENRCOMM(argv[1]);
 
-    //exercice12();
-
-    //exercice13();
+    // ./exec_file_enrcomm_batch_limite commandes.txt
+    ExecFileBatchLimite(argv[1], atoi(argv[2]));
     
     return 0;
 
