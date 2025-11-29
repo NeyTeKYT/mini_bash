@@ -1,11 +1,14 @@
 #define MAX_ARG 100
-#include "fonctions.h"
+
+#include "tp1.h"
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/wait.h>
 #include <time.h>
+#include <fcntl.h>
 
 // Transforme une chaîne de caractères contenant une commande en un tableau d'arguments de type argv
 char ** Ligne2ARGV(char * ligne) {
@@ -37,6 +40,7 @@ void AfficheArgv(char ** argv) {
     printf("\n");
 }
 
+// Affiche un tableau de type ARGV sans faire d'espace à la fin pour améliorer le rendu de certains programmes
 void AfficheArgvWithoutSpace(char ** argv) {
     int i = 0;
     while(argv[i] != NULL) {
@@ -93,15 +97,52 @@ void MiniBash() {
 
     char commande[MAX_ARG]; // getchar() returns EOF (commonly -1) when Ctrl + D is pressed.
 
-    printf("Entrer Commande >");    // affiche un prompt
+    printf("Entrer Commande > ");    // affiche un prompt
 
     char ** argv;
 
     while(fgets(commande, sizeof(commande), stdin) != NULL) { // tant que l'utilisateur n'a pas appuyé sur Ctrl + D
 
         // création de argv puis l'exécute
-        argv = Ligne2ARGV(commande); 
+        argv = Ligne2ARGV(commande);
+        
+        // Traitement des caractères ">", "<", "<<"
+        int sauveout = dup(1);
+        int sauvein = dup(0);
+
+        for(int i = 0; argv[i] != NULL; i++) {
+
+            if(strcmp(argv[i], ">") == 0) { 
+                int file = open(argv[i+1], O_WRONLY | O_CREAT | O_TRUNC, 0644); // crée le fichier s'il n'existe pas déjà
+                argv[i] = NULL;
+                close(1);   // fermeture de STDOUT
+                dup(file);  // la sortie se fait dans le fichier 
+                close(file);
+                break;
+            }
+            else if(strcmp(argv[i], "<") == 0) {
+                int file = open(argv[i+1], O_RDONLY);
+                argv[i] = NULL;
+                close(0);   // fermeture de STDIN
+                dup(file);  // l'entrée se fait via le fichier
+                close(file);
+                break;
+            }
+            else if(strcmp(argv[i], ">>") == 0) {
+                int file = open(argv[i+1], O_WRONLY | O_CREAT | O_APPEND, 0644);
+                argv[i] = NULL;
+                close(1);
+                dup(file);
+                close(file);
+                break;
+            }
+
+        }
+
         Execute(argv);
+
+        close(0); dup(sauvein); close(sauvein);
+        close(1); dup(sauveout); close(sauveout);
 
         // libération de la mémoire
         int i = 0;
@@ -111,7 +152,7 @@ void MiniBash() {
         }
         free(argv);
 
-        printf("Entrer Commande >");    // affiche un prompt
+        printf("Entrer Commande > ");    // affiche un prompt
         
     }
 
@@ -170,7 +211,7 @@ void ExecFile(char * fichier) {
     char *** TabArgv = File2TabArgv(fichier, &nbCommandesLues);  // tableau contenant toutes les commandes
 
     for(int i = 0; i < nbCommandesLues; i++) {  // ex : le fichier a 8 lignes, donc il devrait prendre au moins 40s pour exécuter toutes les commandes
-        AfficheArgv(TabArgv[i]);
+        //AfficheArgv(TabArgv[i]);
         int retour = Execute(TabArgv[i]);
         //sleep(5);   // attend 5 secondes avant d'exécuter la prochaine commande
     }
@@ -216,16 +257,6 @@ void ExecFileBatch(char * fichier) {
     printf("FIN\n");  // toutes les commandes sont exécutées
 
 }
-
-// Structure pour chaque commande
-typedef struct ENRCOMM {
-    int pid;    // numéro de processus dans lequel s'exécute la commande
-    int statut; // -1 = pas encore exécuté / 0 = terminé / 1 = en exécution
-    int retour; // EXITSTATUS (comme dans Execute)
-    time_t debut;   // l'epoch à laquelle la commande a été lancée
-    time_t fin; // l'epoch à laquelle la commande s'est terminée
-    char ** argv;   // Tableau Argv de la commande
-} ENRCOMM;
 
 // on déclarera une variable comme ceci : ENRCOMM TabCom;
 // et ENRCOMM * TabCom; pour un tableau.
@@ -313,7 +344,6 @@ ENRCOMM ExecuteENRCOMM(char ** commande, ENRCOMM e) {
         e.pid = pid;    // le PID du fils est retourné au père
         e.statut = 1;   // en cours d'exécution
         res = wait(&ret);
-        e.statut = 0;
         e.retour = WEXITSTATUS(ret);
     }
 
@@ -369,7 +399,6 @@ int ExecuteENRCOMMBatch(char ** commande, ENRCOMM * e) {
         time_t fin_execution_commande; time(&fin_execution_commande); e->fin = fin_execution_commande;
         e->pid = pid;    // le PID du fils est retourné au père
         e->statut = 1;   // en cours d'exécution
-        e->statut = 0;
         e->retour = WEXITSTATUS(ret);
         return WEXITSTATUS(ret);
     }
